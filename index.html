@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1" />
+    <link rel="stylesheet" href="css/leaflet.css" />
+    <link rel="stylesheet" href="css/L.Control.Locate.min.css" />
+    <link rel="stylesheet" href="css/leaflet.photon.css" />
+    <link rel="stylesheet" href="css/qgis2web.css" />
+    <link rel="stylesheet" href="css/fontawesome-all.min.css" />
+    <style>
+      html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; }
+      .label-state { color: #323232; font-size: 10pt; font-family: "Open Sans", sans-serif; text-shadow: 0 0 2px rgba(255,255,255,.8); pointer-events: none; }
+      .leaflet-interactive { cursor: pointer; }
+    </style>
+    <title>Rapture.zone – Kiting Spots Australia</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script src="js/leaflet.js"></script>
+    <script src="js/L.Control.Locate.min.js"></script>
+    <script src="js/leaflet-hash.js"></script>
+    <script src="js/Autolinker.min.js"></script>
+    <script src="js/leaflet.photon.js"></script>
+
+    <script src="data/SouthAustralia_1.js"></script>
+    <script src="data/Victoria_2.js"></script>
+    <script src="data/WesternAustralia_3.js"></script>
+
+    <script>
+      const map = L.map('map', { zoomControl: false, minZoom: 3, maxZoom: 13 });
+      const AU_BOUNDS = L.latLngBounds([[-44, 112], [-10, 154]]);
+      map.fitBounds(AU_BOUNDS);
+      map.setMaxBounds(AU_BOUNDS.pad(0.15));
+      new L.Hash(map);
+
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      L.control.zoom({ position: 'topleft' }).addTo(map);
+      L.control.locate({ position: 'topleft', flyTo: true, locateOptions: { maxZoom: 10 } }).addTo(map);
+      L.control.photon({ position: 'topleft', placeholder: 'Search places…', noResultLabel: 'No results', marker: true }).addTo(map);
+
+      const autolinker = new Autolinker({ truncate: { length: 36, location: 'smart' } });
+
+      // Robust link normaliser
+      function normalizeLink(raw) {
+        if (!raw) return '';
+        let href = String(raw).trim();
+        // If it's an anchor HTML string, extract the href attribute via DOM
+        if (href.indexOf('<a') !== -1) {
+          const div = document.createElement('div');
+          div.innerHTML = href;
+          const a = div.querySelector('a');
+          if (a && a.getAttribute('href')) href = a.getAttribute('href');
+        }
+        // Already a full web URL
+        if (/^https?:\/\//i.test(href)) return href;
+        // Strip file:// and convert backslashes
+        if (href.slice(0,7).toLowerCase() === 'file://') href = href.slice(7);
+        href = href.split('\\').join('/');
+        const parts = href.split('/');
+        const file = parts.length ? parts[parts.length - 1] : '';
+        if (!file) return '';
+        const slug = file.replace(/\.(html?|htm)$/i, '');
+        return `https://rapture.zone/${slug}`;
+      }
+
+      const circleStyle = (fillColor, radius = 5, weight = 1) => ({ radius, weight, color: '#232323', opacity: 1, fillOpacity: 1, fillColor });
+      const popupHtml = (props) => {
+        const url = normalizeLink(props && props.Link_HTML);
+        const label = (props && props.Name) ? String(props.Name) : url;
+        return `<div><a href="${url}" target="_blank" rel="noopener">${label}</a></div>`;
+      };
+
+      function makePointLayer({ data, name, color, zIndex }) {
+        const paneName = `pane_${name}`;
+        map.createPane(paneName);
+        map.getPane(paneName).style.zIndex = zIndex;
+        const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+
+        return L.geoJSON(data, {
+          pane: paneName,
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, circleStyle(color)),
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties || {};
+            const href = normalizeLink(props.Link_HTML);
+
+            if (props.Name) {
+              layer.bindTooltip(`<div class="label-state">${props.Name}</div>`, { direction: 'top', className: 'label-state', offset: [0, -14] });
+            }
+
+            if (isCoarsePointer) {
+              layer.bindPopup(popupHtml(props), { maxWidth: 360, closeButton: true });
+              layer.on('click', () => layer.openPopup());
+            } else {
+              layer.on({
+                mouseover: () => { layer.openTooltip(); layer.setStyle({ radius: 7, weight: 2 }); },
+                mouseout: () => { layer.closeTooltip(); layer.setStyle(circleStyle(color)); },
+                click: () => { if (href) window.open(href, '_blank', 'noopener'); }
+              });
+            }
+          }
+        });
+      }
+
+      const layers = {
+        SouthAustralia: makePointLayer({ data: json_SouthAustralia_1, name: 'SouthAustralia', color: 'rgba(228,166,182,1.0)', zIndex: 401 }),
+        Victoria: makePointLayer({ data: json_Victoria_2, name: 'Victoria', color: 'rgba(225,195,110,1.0)', zIndex: 402 }),
+        WesternAustralia: makePointLayer({ data: json_WesternAustralia_3, name: 'WesternAustralia', color: 'rgba(132,194,140,1.0)', zIndex: 403 })
+      };
+
+      Object.values(layers).forEach(l => l.addTo(map));
+      L.control.layers({ 'OpenStreetMap': osm }, {
+        'South Australia': layers.SouthAustralia,
+        'Victoria': layers.Victoria,
+        'Western Australia': layers.WesternAustralia,
+      }, { collapsed: false }).addTo(map);
+
+      map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+    </script>
+  </body>
+</html>
