@@ -53,6 +53,9 @@ var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var autolinker = new Autolinker({truncate:{length:36,location:'smart'}});
 var isTouch = window.matchMedia('(pointer: coarse)').matches;
 
+// ---- DOT SIZE CONTROL (only change this number to resize all dots) ----
+const BASE_RADIUS = 10; // ← tweak this
+
 function normalizeLink(raw){
   if(!raw) return '';
   var href = String(raw).trim();
@@ -70,8 +73,8 @@ function normalizeLink(raw){
   return 'https://rapture.zone/' + slug;
 }
 
-function grow(layer){ layer.setStyle({radius:7, weight:2}); }
-function shrink(layer,color){ layer.setStyle({radius:4, weight:1, color:'rgba(35,35,35,1.0)', fillColor:color, fillOpacity:1, opacity:1}); }
+function grow(layer){ layer.setStyle({radius: BASE_RADIUS + 3, weight:2}); }
+function shrink(layer,color){ layer.setStyle({radius: BASE_RADIUS, weight:1, color:'rgba(35,35,35,1.0)', fillColor:color, fillOpacity:1, opacity:1}); }
 function bindLayer(feature, layer, color){
   var p = feature && feature.properties ? feature.properties : {};
   var href = normalizeLink(p.Link_HTML); var name = p.Name || '';
@@ -85,7 +88,7 @@ function bindLayer(feature, layer, color){
     layer.bindPopup(popupContent,{maxHeight:400});
   }
 }
-function style(color){return{radius:4.0,opacity:1,color:'rgba(35,35,35,1.0)',weight:1,fill:true,fillOpacity:1,fillColor:color,interactive:true};}
+function style(color){return{radius: BASE_RADIUS, opacity:1, color:'rgba(35,35,35,1.0)', weight:1, fill:true, fillOpacity:1, fillColor:color, interactive:true};}
 
 // --- Create panes BEFORE using them (fixes blank map if panes were missing) ---
 map.createPane('pane_SouthAustralia_1');
