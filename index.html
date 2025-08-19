@@ -1,202 +1,164 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
-<meta charset="utf-8"> 
-<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width"> 
-<link rel="stylesheet" href="css/leaflet.css"> 
-<link rel="stylesheet" href="css/L.Control.Layers.Tree.css"> 
-<link rel="stylesheet" href="css/L.Control.Locate.min.css"> 
-<link rel="stylesheet" href="css/qgis2web.css"> 
-<link rel="stylesheet" href="css/fontawesome-all.min.css"> 
-<link rel="stylesheet" href="css/leaflet.photon.css"> 
-<style> 
-  html, body, #map {width:100%;height:100%;margin:0;padding:0;} 
-  .label-state{color:#323232;font-size:10pt;font-family:'Open Sans',sans-serif;text-shadow:0 0 2px rgba(255,255,255,.85);pointer-events:none} 
-  .leaflet-interactive{cursor:pointer} 
-</style> 
-</head> 
-<body> 
-<div id="map"></div> 
-<script src="js/qgis2web_expressions.js"></script> 
-<script src="js/leaflet.js"></script> 
-<script src="js/L.Control.Layers.Tree.min.js"></script> 
-<script src="js/L.Control.Locate.min.js"></script> 
-<script src="js/leaflet.rotatedMarker.js"></script> 
-<script src="js/leaflet.pattern.js"></script> 
-<script src="js/leaflet-hash.js"></script> 
-<script src="js/Autolinker.min.js"></script> 
-<script src="js/rbush.min.js"></script> 
-<script src="js/labelgun.min.js"></script> 
-<script src="js/labels.js"></script> 
-<script src="js/leaflet.photon.js"></script> 
-<script src="data/SouthAustralia_1.js"></script> 
-<script src="data/Victoria_2.js"></script> 
-<script src="data/WesternAustralia_3.js"></script> 
-<script> 
-// --- Map init --- 
-var map = L.map('map',{zoomControl:false,minZoom:3,maxZoom:13}); 
-new L.Hash(map); 
-L.control.zoom({position:'topleft'}).addTo(map); 
-L.control.locate({locateOptions:{maxZoom:10}}).addTo(map); 
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+<link rel="stylesheet" href="css/leaflet.css">
+<link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+<link rel="stylesheet" href="css/L.Control.Locate.min.css">
+<link rel="stylesheet" href="css/qgis2web.css">
+<link rel="stylesheet" href="css/fontawesome-all.min.css">
+<link rel="stylesheet" href="css/leaflet.photon.css">
+<style>
+  html, body, #map {width:100%;height:100%;margin:0;padding:0;}
+  .label-state{color:#323232;font-size:10pt;font-family:'Open Sans',sans-serif;text-shadow:0 0 2px rgba(255,255,255,.85);pointer-events:none}
+  .leaflet-interactive{cursor:pointer}
 
-// Give the map an initial, valid view 
-var AU_BOUNDS = L.latLngBounds([[-44,112],[-10,154]]); 
-map.fitBounds(AU_BOUNDS); 
-map.setMaxBounds(AU_BOUNDS.pad(0.15)); 
-
-// Basemap 
-var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-  maxZoom: 19, 
-  attribution: '&copy; OpenStreetMap contributors' 
-}).addTo(map); 
-
-var autolinker = new Autolinker({truncate:{length:36,location:'smart'}}); 
-var isTouch = window.matchMedia('(pointer: coarse)').matches; 
-
-// (You can keep this override, but the hitbox below handles taps)
-const CLICK_PAD = 25;
-L.CircleMarker.include({
-  _containsPoint: function (p) {
-    return p.distanceTo(this._point) <= (this._radius + this._clickTolerance() + CLICK_PAD);
+  /* --- Unified marker styling --- */
+  /* Outer wrapper defines the clickable area (bigger than the visual dot) */
+  .rapture-hitbox {
+    width: 28px;              /* tap/click area */
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  /* Your visual dot */
+  .rapture-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffffff 30%, #005f99 70%);
+    border: 2px solid #ff6600; /* tangerine outline */
+    transition: transform 120ms ease;
+    box-sizing: border-box;
+  }
+  /* Hover grow (desktop) */
+  .rapture-hitbox:hover .rapture-marker {
+    transform: scale(1.35);
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="js/L.Control.Layers.Tree.min.js"></script>
+<script src="js/L.Control.Locate.min.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="js/leaflet.photon.js"></script>
+<script src="data/SouthAustralia_1.js"></script>
+<script src="data/Victoria_2.js"></script>
+<script src="data/WesternAustralia_3.js"></script>
+
+<script>
+// --- Map init ---
+var map = L.map('map',{zoomControl:false,minZoom:3,maxZoom:13});
+new L.Hash(map);
+L.control.zoom({position:'topleft'}).addTo(map);
+L.control.locate({locateOptions:{maxZoom:10}}).addTo(map);
+
+// Initial view / bounds
+var AU_BOUNDS = L.latLngBounds([[-44,112],[-10,154]]);
+map.fitBounds(AU_BOUNDS);
+map.setMaxBounds(AU_BOUNDS.pad(0.15));
+
+// Basemap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+var autolinker = new Autolinker({truncate:{length:36,location:'smart'}});
+var isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+// --- Unified icon for all points (same look everywhere) ---
+const raptureIcon = L.divIcon({
+  className: 'rapture-hitbox',
+  html: '<div class="rapture-marker"></div>',
+  iconSize: [28, 28],     // clickable area
+  iconAnchor: [14, 14],   // center the marker
+  popupAnchor: [0, -14]
 });
 
-// --- Hover behaviour WITH growth ---
-function grow(layer){ 
-  layer.setStyle({radius: 7, weight: 2}); // grows visually on hover
-} 
-function shrink(layer,color){ 
-  layer.setStyle({
-    radius: 4, weight: 1, color:'rgba(35,35,35,1.0)',
-    fillColor: color, fillOpacity: 1, opacity: 1
-  }); 
-} 
-
-// --- Base style (default radius 4) ---
-function style(color){
-  return {
-    radius: 4, // normal size
-    opacity: 1,
-    color:'rgba(35,35,35,1.0)',
-    weight: 1,
-    fill: true,
-    fillOpacity: 1,
-    fillColor: color,
-    interactive: true
-  };
-}
-
-// ==== Invisible hitbox helpers (bigger tap/click area) ====
-const HIT_RADIUS = 20; // <— tweak this to make tapping easier/harder
-
-// Return the visible child if we’re wrapping in a FeatureGroup
-function visibleChild(layer){
-  let vis = null;
-  if (layer instanceof L.FeatureGroup) {
-    layer.eachLayer(ch => { if (ch.options && ch.options._isVisible) vis = ch; });
+// Link utils
+function normalizeLink(raw){
+  if(!raw) return '';
+  var href = String(raw).trim();
+  if(href.indexOf('<a') !== -1){
+    var div = document.createElement('div');
+    div.innerHTML = href; var a = div.querySelector('a');
+    if(a && a.getAttribute('href')) href = a.getAttribute('href');
   }
-  return vis || layer;
+  if(/^https?:\/\//i.test(href)) return href;
+  if(href.slice(0,7).toLowerCase()==='file://') href = href.slice(7);
+  href = href.split('\\').join('/');
+  var parts = href.split('/'); var file = parts.length?parts[parts.length-1]:'';
+  if(!file) return '';
+  var slug = file.replace(/\.(html?|htm)$/i,'');
+  return 'https://rapture.zone/' + slug;
 }
 
-// Build a visible marker + an invisible hitbox that forwards events
-function markerWithHitbox(latlng, color){
-  const visible = L.circleMarker(latlng, Object.assign({}, style(color), {_isVisible:true}));
-  const hitbox  = L.circleMarker(latlng, {
-    radius: HIT_RADIUS,
-    stroke: false,
-    fill: true,
-    fillOpacity: 0,       // fully invisible
-    interactive: true,    // still catches clicks/taps
-    bubblingMouseEvents: false
-  });
-
-  // Forward interactions from the invisible hitbox to the visible dot
-  ['click','mouseover','mouseout','mousemove','mousedown','mouseup','contextmenu']
-    .forEach(ev => hitbox.on(ev, e => visible.fire(ev, e)));
-
-  // Keep them together
-  return L.featureGroup([hitbox, visible]);
+function bindLayer(feature, layer){
+  var p = feature && feature.properties ? feature.properties : {};
+  var href = normalizeLink(p.Link_HTML); var name = p.Name || '';
+  if(!isTouch){
+    if(name) layer.bindTooltip('<div class="label-state">'+name+'</div>', {direction:'top', offset:[0,-20], className:'label-state'});
+    layer.on('click', function(){ if(href) window.open(href,'_blank','noopener'); });
+  } else {
+    var popupContent = '<div><a href="'+href+'" target="_blank" rel="noopener">'+(name||href)+'</a></div>';
+    layer.bindPopup(popupContent,{maxHeight:400});
+  }
 }
-// ==== /hitbox helpers ==== 
 
-function normalizeLink(raw){ 
-  if(!raw) return ''; 
-  var href = String(raw).trim(); 
-  if(href.indexOf('<a') !== -1){ 
-    var div = document.createElement('div'); 
-    div.innerHTML = href; var a = div.querySelector('a'); 
-    if(a && a.getAttribute('href')) href = a.getAttribute('href'); 
-  } 
-  if(/^https?:\/\//i.test(href)) return href; 
-  if(href.slice(0,7).toLowerCase()==='file://') href = href.slice(7); 
-  href = href.split('\\').join('/'); 
-  var parts = href.split('/'); var file = parts.length?parts[parts.length-1]:''; 
-  if(!file) return ''; 
-  var slug = file.replace(/\.(html?|htm)$/i,''); 
-  return 'https://rapture.zone/' + slug; 
-} 
+// --- Panes ---
+map.createPane('pane_SouthAustralia_1');  map.getPane('pane_SouthAustralia_1').style.zIndex = 401;  map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal';
+map.createPane('pane_Victoria_2');        map.getPane('pane_Victoria_2').style.zIndex = 402;        map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal';
+map.createPane('pane_WesternAustralia_3');map.getPane('pane_WesternAustralia_3').style.zIndex = 403; map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal';
 
-function bindLayer(feature, layer, color){ 
-  var p = feature && feature.properties ? feature.properties : {}; 
-  var href = normalizeLink(p.Link_HTML); var name = p.Name || ''; 
-  if(!isTouch){ 
-    if(name) layer.bindTooltip('<div class="label-state">'+name+'</div>',{direction:'top',offset:[0,-14],className:'label-state'}); 
-    layer.on('mouseover', function(){ layer.openTooltip(); grow(layer); }); 
-    layer.on('mouseout', function(){ layer.closeTooltip(); shrink(layer,color); }); 
-    layer.on('click', function(){ if(href) window.open(href,'_blank','noopener'); }); 
-  } else { 
-    var popupContent = '<div><a href="'+href+'" target="_blank" rel="noopener">'+(name||href)+'</a></div>'; 
-    layer.bindPopup(popupContent,{maxHeight:400}); 
-  } 
-} 
+// --- Layers: use a single styledPoint for all three ---
+function styledPoint(feature, latlng){
+  return L.marker(latlng, { icon: raptureIcon });
+}
 
-// --- Create panes --- 
-map.createPane('pane_SouthAustralia_1'); 
-map.getPane('pane_SouthAustralia_1').style.zIndex = 401; 
-map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal'; 
+var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{
+  pane:'pane_SouthAustralia_1',
+  onEachFeature:function(f,l){ bindLayer(f,l); },
+  pointToLayer: styledPoint
+});
+var layer_Victoria_2 = L.geoJson(json_Victoria_2,{
+  pane:'pane_Victoria_2',
+  onEachFeature:function(f,l){ bindLayer(f,l); },
+  pointToLayer: styledPoint
+});
+var layer_WesternAustralia_3 = L.geoJson(json_WesternAustralia_3,{
+  pane:'pane_WesternAustralia_3',
+  onEachFeature:function(f,l){ bindLayer(f,l); },
+  pointToLayer: styledPoint
+});
 
-map.createPane('pane_Victoria_2'); 
-map.getPane('pane_Victoria_2').style.zIndex = 402; 
-map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal'; 
+map.addLayer(layer_SouthAustralia_1);
+map.addLayer(layer_Victoria_2);
+map.addLayer(layer_WesternAustralia_3);
 
-map.createPane('pane_WesternAustralia_3'); 
-map.getPane('pane_WesternAustralia_3').style.zIndex = 403; 
-map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal'; 
+// Layer tree
+new L.Control.Layers.Tree(null, [
+  {label:'South Australia', layer:layer_SouthAustralia_1},
+  {label:'Victoria',        layer:layer_Victoria_2},
+  {label:'Western Australia', layer:layer_WesternAustralia_3},
+], {collapsed:false}).addTo(map);
 
-// --- Layers (use hitbox wrapper + pass visible child to bindLayer) --- 
-var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{ 
-  pane:'pane_SouthAustralia_1', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(228,166,182,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(228,166,182,1.0)'); } 
-}); 
-var layer_Victoria_2 = L.geoJson(json_Victoria_2,{ 
-  pane:'pane_Victoria_2', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(225,195,110,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(225,195,110,1.0)'); } 
-}); 
-var layer_WesternAustralia_3 = L.geoJson(json_WesternAustralia_3,{ 
-  pane:'pane_WesternAustralia_3', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(132,194,140,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(132,194,140,1.0)'); } 
-}); 
-
-map.addLayer(layer_SouthAustralia_1); 
-map.addLayer(layer_Victoria_2); 
-map.addLayer(layer_WesternAustralia_3); 
-
-// Layer tree 
-var overlaysTree=[ 
-  {label:'South Australia', layer:layer_SouthAustralia_1}, 
-  {label:'Victoria', layer:layer_Victoria_2}, 
-  {label:'Western Australia', layer:layer_WesternAustralia_3}, 
-]; 
-new L.Control.Layers.Tree(null, overlaysTree, {collapsed:false}).addTo(map); 
-
-// Fit to data bounds if available 
-try{ 
-  var fg=L.featureGroup([layer_SouthAustralia_1,layer_Victoria_2,layer_WesternAustralia_3]); 
-  var b=fg.getBounds(); if(b && b.isValid()) map.fitBounds(b.pad(0.2)); 
-}catch(e){console.warn(e);} 
-</script> 
-</body> 
+// Fit bounds
+try{
+  var fg = L.featureGroup([layer_SouthAustralia_1, layer_Victoria_2, layer_WesternAustralia_3]);
+  var b  = fg.getBounds(); if(b && b.isValid()) map.fitBounds(b.pad(0.2));
+}catch(e){ console.warn(e); }
+</script>
+</body>
 </html>
