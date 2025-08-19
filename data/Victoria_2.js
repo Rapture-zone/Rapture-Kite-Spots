@@ -27,7 +27,7 @@ var json_Victoria_2 = {
 { "type": "Feature", "properties": { "Name": "Marengo", "Link": "https://rapture.zone/marengo", "Link_HTML": "<a href=\"https://rapture.zone/marengo\" target=\"_blank\">Kite Marengo</a>" }, "geometry": { "type": "Point", "coordinates": [ 143.6674897, -38.7805519 ] } },
 { "type": "Feature", "properties": { "Name": "Moggs creek", "Link": "https://rapture.zone/moggs-creek", "Link_HTML": "<a href=\"https://rapture.zone/moggs-creek\" target=\"_blank\">Kite Moggs creek</a>" }, "geometry": { "type": "Point", "coordinates": [ 144.052898699999986, -38.4721499 ] } },
 { "type": "Feature", "properties": { "Name": "Nelson", "Link": "https://rapture.zone/nelson", "Link_HTML": "<a href=\"https://rapture.zone/nelson\" target=\"_blank\">Kite Nelson</a>" }, "geometry": { "type": "Point", "coordinates": [ 141.013644, -38.0671787 ] } },
-{ "type": "Feature", "properties": { "Name": "Nuns Beach", "Link": "https://rapture.zone/nuns-beach", "Link_HTML": "<a href=\"https://rapture.zone/nun's-beach\" target=\"_blank\">Kite Nuns Beach</a>" }, "geometry": { "type": "Point", "coordinates": [ 141.6104996, -38.342346 ] } },
+{ "type": "Feature", "properties": { "Name": "Nuns Beach", "Link": "https://rapture.zone/nuns-beach", "Link_HTML": "<a href=\"https://rapture.zone/nuns-beach\" target=\"_blank\">Kite Nuns Beach</a>" }, "geometry": { "type": "Point", "coordinates": [ 141.6104996, -38.342346 ] } },
 { "type": "Feature", "properties": { "Name": "Ocean grove", "Link": "https://rapture.zone/ocean-grove", "Link_HTML": "<a href=\"https://rapture.zone/ocean-grove\" target=\"_blank\">Kite Ocean grove</a>" }, "geometry": { "type": "Point", "coordinates": [ 144.515863700000011, -38.2741236 ] } },
 { "type": "Feature", "properties": { "Name": "Petersborough", "Link": "https://rapture.zone/petersborough", "Link_HTML": "<a href=\"https://rapture.zone/petersborough\" target=\"_blank\">Kite Petersborough</a>" }, "geometry": { "type": "Point", "coordinates": [ 142.878147, -38.6113338 ] } },
 { "type": "Feature", "properties": { "Name": "Point Addis", "Link": "https://rapture.zone/point-addis", "Link_HTML": "<a href=\"https://rapture.zone/point-addis\" target=\"_blank\">Kite Point Addis</a>" }, "geometry": { "type": "Point", "coordinates": [ 144.2532043, -38.3961286 ] } },
@@ -47,3 +47,4 @@ var json_Victoria_2 = {
 { "type": "Feature", "properties": { "Name": "Yambuk", "Link": "https://rapture.zone/yambuk", "Link_HTML": "<a href=\"https://rapture.zone/yambuk\" target=\"_blank\">Kite Yambuk</a>" }, "geometry": { "type": "Point", "coordinates": [ 142.0509092, -38.3422837 ] } }
 ]
 }
+
