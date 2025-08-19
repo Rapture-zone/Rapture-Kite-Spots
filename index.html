@@ -53,14 +53,6 @@ var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var autolinker = new Autolinker({truncate:{length:36,location:'smart'}}); 
 var isTouch = window.matchMedia('(pointer: coarse)').matches; 
 
-// (You can keep this override, but the hitbox below handles taps)
-const CLICK_PAD = 25;
-L.CircleMarker.include({
-  _containsPoint: function (p) {
-    return p.distanceTo(this._point) <= (this._radius + this._clickTolerance() + CLICK_PAD);
-  }
-});
-
 // --- Hover behaviour WITH growth ---
 function grow(layer){ 
   layer.setStyle({radius: 7, weight: 2}); // grows visually on hover
