@@ -39,12 +39,12 @@ new L.Hash(map);
 L.control.zoom({position:'topleft'}).addTo(map); 
 L.control.locate({locateOptions:{maxZoom:10}}).addTo(map); 
 
-// Give the map an initial, valid view (prevents blank screen before data fit) 
+// Give the map an initial, valid view 
 var AU_BOUNDS = L.latLngBounds([[-44,112],[-10,154]]); 
 map.fitBounds(AU_BOUNDS); 
 map.setMaxBounds(AU_BOUNDS.pad(0.15)); 
 
-// Basemap so the canvas isn't blank 
+// Basemap 
 var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
   maxZoom: 19, 
   attribution: '&copy; OpenStreetMap contributors' 
@@ -53,9 +53,117 @@ var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var autolinker = new Autolinker({truncate:{length:36,location:'smart'}}); 
 var isTouch = window.matchMedia('(pointer: coarse)').matches; 
 
-// --- ⬇️ NEW: expand click/touch hit area WITHOUT changing dot size ---
-const CLICK_PAD = 8; // pixels added to the hit-test radius (adjust to taste)
+// --- Expand click/touch hit area WITHOUT changing visual size ---
+const CLICK_PAD = 8; // pixels of extra clickable area
 L.CircleMarker.include({
   _containsPoint: function (p) {
-    // original Leaflet check + extra padding
-    return p.distanceTo(this._point) <= (this._r
+    return p.distanceTo(this._point) <= (this._radius + this._clickTolerance() + CLICK_PAD);
+  }
+});
+
+// --- Hover behaviour WITH growth ---
+function grow(layer){ 
+  layer.setStyle({radius: 7, weight: 2}); // grows visually on hover
+} 
+function shrink(layer,color){ 
+  layer.setStyle({
+    radius: 4, weight: 1, color:'rgba(35,35,35,1.0)',
+    fillColor: color, fillOpacity: 1, opacity: 1
+  }); 
+} 
+
+// --- Base style (default radius 4) ---
+function style(color){
+  return {
+    radius: 4, // normal size
+    opacity: 1,
+    color:'rgba(35,35,35,1.0)',
+    weight: 1,
+    fill: true,
+    fillOpacity: 1,
+    fillColor: color,
+    interactive: true
+  };
+} 
+
+function normalizeLink(raw){ 
+  if(!raw) return ''; 
+  var href = String(raw).trim(); 
+  if(href.indexOf('<a') !== -1){ 
+    var div = document.createElement('div'); 
+    div.innerHTML = href; var a = div.querySelector('a'); 
+    if(a && a.getAttribute('href')) href = a.getAttribute('href'); 
+  } 
+  if(/^https?:\/\//i.test(href)) return href; 
+  if(href.slice(0,7).toLowerCase()==='file://') href = href.slice(7); 
+  href = href.split('\\').join('/'); 
+  var parts = href.split('/'); var file = parts.length?parts[parts.length-1]:''; 
+  if(!file) return ''; 
+  var slug = file.replace(/\.(html?|htm)$/i,''); 
+  return 'https://rapture.zone/' + slug; 
+} 
+
+function bindLayer(feature, layer, color){ 
+  var p = feature && feature.properties ? feature.properties : {}; 
+  var href = normalizeLink(p.Link_HTML); var name = p.Name || ''; 
+  if(!isTouch){ 
+    if(name) layer.bindTooltip('<div class="label-state">'+name+'</div>',{direction:'top',offset:[0,-14],className:'label-state'}); 
+    layer.on('mouseover', function(){ layer.openTooltip(); grow(layer); }); 
+    layer.on('mouseout', function(){ layer.closeTooltip(); shrink(layer,color); }); 
+    layer.on('click', function(){ if(href) window.open(href,'_blank','noopener'); }); 
+  } else { 
+    var popupContent = '<div><a href="'+href+'" target="_blank" rel="noopener">'+(name||href)+'</a></div>'; 
+    layer.bindPopup(popupContent,{maxHeight:400}); 
+  } 
+} 
+
+// --- Create panes --- 
+map.createPane('pane_SouthAustralia_1'); 
+map.getPane('pane_SouthAustralia_1').style.zIndex = 401; 
+map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal'; 
+
+map.createPane('pane_Victoria_2'); 
+map.getPane('pane_Victoria_2').style.zIndex = 402; 
+map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal'; 
+
+map.createPane('pane_WesternAustralia_3'); 
+map.getPane('pane_WesternAustralia_3').style.zIndex = 403; 
+map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal'; 
+
+// --- Layers --- 
+var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{ 
+  pane:'pane_SouthAustralia_1', 
+  onEachFeature:function(f,l){bindLayer(f,l,'rgba(228,166,182,1.0)');}, 
+  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(228,166,182,1.0)'));} 
+}); 
+var layer_Victoria_2 = L.geoJson(json_Victoria_2,{ 
+  pane:'pane_Victoria_2', 
+  onEachFeature:function(f,l){bindLayer(f,l,'rgba(225,195,110,1.0)');}, 
+  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(225,195,110,1.0)'));} 
+}); 
+var layer_WesternAustralia_3 = L.geoJson(json_WesternAustralia_3,{ 
+  pane:'pane_WesternAustralia_3', 
+  onEachFeature:function(f,l){bindLayer(f,l,'rgba(132,194,140,1.0)');}, 
+  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(132,194,140,1.0)'));} 
+}); 
+
+map.addLayer(layer_SouthAustralia_1); 
+map.addLayer(layer_Victoria_2); 
+map.addLayer(layer_WesternAustralia_3); 
+
+// Layer tree 
+var overlaysTree=[ 
+  {label:'South Australia', layer:layer_SouthAustralia_1}, 
+  {label:'Victoria', layer:layer_Victoria_2}, 
+  {label:'Western Australia', layer:layer_WesternAustralia_3}, 
+]; 
+new L.Control.Layers.Tree(null, overlaysTree, {collapsed:false}).addTo(map); 
+
+// Fit to data bounds if available 
+try{ 
+  var fg=L.featureGroup([layer_SouthAustralia_1,layer_Victoria_2,layer_WesternAustralia_3]); 
+  var b=fg.getBounds(); if(b && b.isValid()) map.fitBounds(b.pad(0.2)); 
+}catch(e){console.warn(e);} 
+</script> 
+</body> 
+</html>
