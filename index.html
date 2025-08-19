@@ -53,8 +53,8 @@ var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var autolinker = new Autolinker({truncate:{length:36,location:'smart'}}); 
 var isTouch = window.matchMedia('(pointer: coarse)').matches; 
 
-// --- Expand click/touch hit area WITHOUT changing visual size ---
-const CLICK_PAD = 25; // pixels of extra clickable area
+// (You can keep this override, but the hitbox below handles taps)
+const CLICK_PAD = 25;
 L.CircleMarker.include({
   _containsPoint: function (p) {
     return p.distanceTo(this._point) <= (this._radius + this._clickTolerance() + CLICK_PAD);
@@ -84,7 +84,40 @@ function style(color){
     fillColor: color,
     interactive: true
   };
-} 
+}
+
+// ==== Invisible hitbox helpers (bigger tap/click area) ====
+const HIT_RADIUS = 20; // <— tweak this to make tapping easier/harder
+
+// Return the visible child if we’re wrapping in a FeatureGroup
+function visibleChild(layer){
+  let vis = null;
+  if (layer instanceof L.FeatureGroup) {
+    layer.eachLayer(ch => { if (ch.options && ch.options._isVisible) vis = ch; });
+  }
+  return vis || layer;
+}
+
+// Build a visible marker + an invisible hitbox that forwards events
+function markerWithHitbox(latlng, color){
+  const visible = L.circleMarker(latlng, Object.assign({}, style(color), {_isVisible:true}));
+  const hitbox  = L.circleMarker(latlng, {
+    radius: HIT_RADIUS,
+    stroke: false,
+    fill: true,
+    fillOpacity: 0,       // fully invisible
+    interactive: true,    // still catches clicks/taps
+    bubblingMouseEvents: false
+  });
+
+  // Forward interactions from the invisible hitbox to the visible dot
+  ['click','mouseover','mouseout','mousemove','mousedown','mouseup','contextmenu']
+    .forEach(ev => hitbox.on(ev, e => visible.fire(ev, e)));
+
+  // Keep them together
+  return L.featureGroup([hitbox, visible]);
+}
+// ==== /hitbox helpers ==== 
 
 function normalizeLink(raw){ 
   if(!raw) return ''; 
@@ -130,21 +163,21 @@ map.createPane('pane_WesternAustralia_3');
 map.getPane('pane_WesternAustralia_3').style.zIndex = 403; 
 map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal'; 
 
-// --- Layers --- 
+// --- Layers (use hitbox wrapper + pass visible child to bindLayer) --- 
 var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{ 
   pane:'pane_SouthAustralia_1', 
-  onEachFeature:function(f,l){bindLayer(f,l,'rgba(228,166,182,1.0)');}, 
-  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(228,166,182,1.0)'));} 
+  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(228,166,182,1.0)'); }, 
+  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(228,166,182,1.0)'); } 
 }); 
 var layer_Victoria_2 = L.geoJson(json_Victoria_2,{ 
   pane:'pane_Victoria_2', 
-  onEachFeature:function(f,l){bindLayer(f,l,'rgba(225,195,110,1.0)');}, 
-  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(225,195,110,1.0)'));} 
+  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(225,195,110,1.0)'); }, 
+  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(225,195,110,1.0)'); } 
 }); 
 var layer_WesternAustralia_3 = L.geoJson(json_WesternAustralia_3,{ 
   pane:'pane_WesternAustralia_3', 
-  onEachFeature:function(f,l){bindLayer(f,l,'rgba(132,194,140,1.0)');}, 
-  pointToLayer:function(f,ll){return L.circleMarker(ll, style('rgba(132,194,140,1.0)'));} 
+  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(132,194,140,1.0)'); }, 
+  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(132,194,140,1.0)'); } 
 }); 
 
 map.addLayer(layer_SouthAustralia_1); 
