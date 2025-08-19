@@ -54,7 +54,7 @@ var autolinker = new Autolinker({truncate:{length:36,location:'smart'}});
 var isTouch = window.matchMedia('(pointer: coarse)').matches; 
 
 // --- Expand click/touch hit area WITHOUT changing visual size ---
-const CLICK_PAD = 8; // pixels of extra clickable area
+const CLICK_PAD = 15; // pixels of extra clickable area
 L.CircleMarker.include({
   _containsPoint: function (p) {
     return p.distanceTo(this._point) <= (this._radius + this._clickTolerance() + CLICK_PAD);
