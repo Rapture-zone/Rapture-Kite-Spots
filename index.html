@@ -57,20 +57,20 @@ var isTouch = window.matchMedia('(pointer: coarse)').matches;
 function grow(layer){ 
   layer.setStyle({radius: 7, weight: 2}); // grows visually on hover
 } 
-function shrink(layer,color){ 
+function shrink(layer,){ 
   layer.setStyle({
-    radius: 4, weight: 1, color:'rgba(35,35,35,1.0)',
-    fillColor: color, fillOpacity: 1, opacity: 1
+    radius: 4, weight: 1, :'rgba(35,35,35,1.0)',
+    fill: , fillOpacity: 1, opacity: 1
   }); 
 } 
 
 // --- Base style (default radius 4) ---
-function style(color){
+function style(){
   return {
     radius: 4, // normal size
     opacity: 1,
-    color:'rgba(35,35,35,1.0)',
-    weight: 1,
+    :'rgba(234, 224, 200, 1.0)',
+    weight: 2,
     fill: true,
     fillOpacity: 1,
     fillColor: color,
