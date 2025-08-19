@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="css/fontawesome-all.min.css">
 <link rel="stylesheet" href="css/leaflet.photon.css">
 <style>
-  html, body, #map {width:100%; height:100%; margin:0; padding:0;}
+  html, body, #map {width:100%;height:100%;margin:0;padding:0;}
   .label-state{color:#323232;font-size:10pt;font-family:'Open Sans',sans-serif;text-shadow:0 0 2px rgba(255,255,255,.85);pointer-events:none}
   .leaflet-interactive{cursor:pointer}
 </style>
@@ -36,7 +36,7 @@
 
 <script>
 // --- Map init ---
-var map = L.map('map', {zoomControl:false, minZoom:3, maxZoom:13});
+var map = L.map('map',{zoomControl:false,minZoom:3,maxZoom:13});
 new L.Hash(map);
 L.control.zoom({position:'topleft'}).addTo(map);
 L.control.locate({locateOptions:{maxZoom:10}}).addTo(map);
@@ -54,35 +54,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var autolinker = new Autolinker({truncate:{length:36,location:'smart'}});
 var isTouch = window.matchMedia('(pointer: coarse)').matches;
 
-// --- Hover behaviour WITH growth ---
-function grow(layer){ layer.setStyle({radius: 7, weight: 2}); }
-function shrink(layer, color){
-  layer.setStyle({
-    radius: 4,
-    weight: 1,
-    color: 'rgba(234,224,200,1.0)', // outline stays pearl
-    fillColor: color,
-    fillOpacity: 1,
-    opacity: 1
-  });
-}
-
-// --- Base style (default radius 4, pearl outline) ---
-function style(color){
-  return {
-    radius: 4,
-    opacity: 1,
-    color: 'rgba(234,224,200,1.0)', // pearl white outline
-    weight: 2,                      // slightly thicker for pop
-    fill: true,
-    fillOpacity: 1,
-    fillColor: color,               // layer-specific fill
-    interactive: true
-  };
-}
-
 // ==== Invisible hitbox helpers (bigger tap/click area) ====
-const HIT_RADIUS = 20; // tweak to make tapping easier/harder
+const HIT_RADIUS = 20; // tweak this to make tapping easier/harder
 
 function visibleChild(layer){
   let vis = null;
@@ -92,26 +65,72 @@ function visibleChild(layer){
   return vis || layer;
 }
 
-function markerWithHitbox(latlng, color){
-  const visible = L.circleMarker(latlng, Object.assign({}, style(color), {_isVisible:true}));
-  const hitbox  = L.circleMarker(latlng, {
+// Build: white halo (outer), black outline + fill (visible), invisible hitbox
+function markerWithHitbox(latlng, fillColor){
+  // Main visible dot (fill + black 1px outline)
+  const visible = L.circleMarker(latlng, {
+    radius: 4,
+    weight: 1,
+    color: 'black',          // inner outline
+    fillColor: fillColor,    // keep your original layer fill colour
+    fillOpacity: 1,
+    opacity: 1,
+    _isVisible: true
+  });
+
+  // White halo behind it (slightly larger, hollow with white 1px stroke)
+  const halo = L.circleMarker(latlng, {
+    radius: 5.5,             // slightly bigger than visible (4 -> 5.5)
+    weight: 1,
+    color: 'white',          // outer halo
+    fillOpacity: 0,
+    opacity: 1,
+    interactive: false       // halo does not capture events
+  });
+
+  // Invisible hitbox to improve touch/click
+  const hitbox = L.circleMarker(latlng, {
     radius: HIT_RADIUS,
     stroke: false,
     fill: true,
-    fillOpacity: 0,       // invisible
+    fillOpacity: 0,
     interactive: true,
     bubblingMouseEvents: false
   });
 
-  // Forward interactions from the invisible hitbox to the visible dot
+  // Link halo to visible so we can resize it on hover
+  visible.__halo = halo;
+
+  // Forward interactions from hitbox → visible (so behavior attaches once)
   ['click','mouseover','mouseout','mousemove','mousedown','mouseup','contextmenu']
     .forEach(ev => hitbox.on(ev, e => visible.fire(ev, e)));
 
-  return L.featureGroup([hitbox, visible]);
+  // Keep layering order: halo (bottom) → visible → hitbox (top, invisible)
+  return L.featureGroup([halo, visible, hitbox]);
 }
-// ==== /hitbox helpers ====
 
-// Link utilities
+// Hover behaviour WITH growth (updates both visible + halo)
+function grow(layer){
+  const visible = layer; // layer is the visible child
+  const halo = visible.__halo;
+  visible.setStyle({ radius: 7, weight: 2 });        // larger dot, thicker outline
+  if (halo) halo.setStyle({ radius: 8.5, weight: 1 }); // keep ~1.5px larger halo
+}
+function shrink(layer, fillColor){
+  const visible = layer;
+  const halo = visible.__halo;
+  visible.setStyle({
+    radius: 4,
+    weight: 1,
+    color: 'black',
+    fillColor: fillColor,
+    fillOpacity: 1,
+    opacity: 1
+  });
+  if (halo) halo.setStyle({ radius: 5.5, weight: 1, color: 'white' });
+}
+
+// Link utils
 function normalizeLink(raw){
   if(!raw) return '';
   var href = String(raw).trim();
@@ -129,13 +148,13 @@ function normalizeLink(raw){
   return 'https://rapture.zone/' + slug;
 }
 
-function bindLayer(feature, layer, color){
+function bindLayer(feature, layer, fillColor){
   var p = feature && feature.properties ? feature.properties : {};
   var href = normalizeLink(p.Link_HTML); var name = p.Name || '';
   if(!isTouch){
     if(name) layer.bindTooltip('<div class="label-state">'+name+'</div>', {direction:'top', offset:[0,-14], className:'label-state'});
     layer.on('mouseover', function(){ layer.openTooltip(); grow(layer); });
-    layer.on('mouseout',  function(){ layer.closeTooltip(); shrink(layer,color); });
+    layer.on('mouseout',  function(){ layer.closeTooltip(); shrink(layer, fillColor); });
     layer.on('click',     function(){ if(href) window.open(href,'_blank','noopener'); });
   } else {
     var popupContent = '<div><a href="'+href+'" target="_blank" rel="noopener">'+(name||href)+'</a></div>';
@@ -144,11 +163,19 @@ function bindLayer(feature, layer, color){
 }
 
 // --- Panes ---
-map.createPane('pane_SouthAustralia_1');  map.getPane('pane_SouthAustralia_1').style.zIndex = 401;  map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal';
-map.createPane('pane_Victoria_2');        map.getPane('pane_Victoria_2').style.zIndex = 402;        map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal';
-map.createPane('pane_WesternAustralia_3');map.getPane('pane_WesternAustralia_3').style.zIndex = 403; map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal';
+map.createPane('pane_SouthAustralia_1');
+map.getPane('pane_SouthAustralia_1').style.zIndex = 401;
+map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal';
 
-// --- Layers (use hitbox wrapper + visibleChild) ---
+map.createPane('pane_Victoria_2');
+map.getPane('pane_Victoria_2').style.zIndex = 402;
+map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal';
+
+map.createPane('pane_WesternAustralia_3');
+map.getPane('pane_WesternAustralia_3').style.zIndex = 403;
+map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal';
+
+// --- Layers (use hitbox wrapper + visibleChild to bind events) ---
 var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{
   pane:'pane_SouthAustralia_1',
   onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(228,166,182,1.0)'); },
@@ -173,7 +200,7 @@ map.addLayer(layer_WesternAustralia_3);
 new L.Control.Layers.Tree(null, [
   {label:'South Australia', layer:layer_SouthAustralia_1},
   {label:'Victoria',        layer:layer_Victoria_2},
-  {label:'Western Australia',layer:layer_WesternAustralia_3}
+  {label:'Western Australia', layer:layer_WesternAustralia_3},
 ], {collapsed:false}).addTo(map);
 
 // Fit bounds
