@@ -1,57 +1,70 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
-<meta charset="utf-8"> 
-<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width"> 
-<link rel="stylesheet" href="css/leaflet.css"> 
-<link rel="stylesheet" href="css/L.Control.Layers.Tree.css"> 
-<link rel="stylesheet" href="css/L.Control.Locate.min.css"> 
-<link rel="stylesheet" href="css/qgis2web.css"> 
-<link rel="stylesheet" href="css/fontawesome-all.min.css"> 
-<link rel="stylesheet" href="css/leaflet.photon.css"> 
-<style> 
-  html, body, #map {width:100%;height:100%;margin:0;padding:0;} 
-  .label-state{color:#323232;font-size:10pt;font-family:'Open Sans',sans-serif;text-shadow:0 0 2px rgba(255,255,255,.85);pointer-events:none} 
-  .leaflet-interactive{cursor:pointer} 
-</style> 
-</head> 
-<body> 
-<div id="map"></div> 
-<script src="js/qgis2web_expressions.js"></script> 
-<script src="js/leaflet.js"></script> 
-<script src="js/L.Control.Layers.Tree.min.js"></script> 
-<script src="js/L.Control.Locate.min.js"></script> 
-<script src="js/leaflet.rotatedMarker.js"></script> 
-<script src="js/leaflet.pattern.js"></script> 
-<script src="js/leaflet-hash.js"></script> 
-<script src="js/Autolinker.min.js"></script> 
-<script src="js/rbush.min.js"></script> 
-<script src="js/labelgun.min.js"></script> 
-<script src="js/labels.js"></script> 
-<script src="js/leaflet.photon.js"></script> 
-<script src="data/SouthAustralia_1.js"></script> 
-<script src="data/Victoria_2.js"></script> 
-<script src="data/WesternAustralia_3.js"></script> 
-<script> 
-// --- Map init --- 
-var map = L.map('map',{zoomControl:false,minZoom:3,maxZoom:13}); 
-new L.Hash(map); 
-L.control.zoom({position:'topleft'}).addTo(map); 
-L.control.locate({locateOptions:{maxZoom:10}}).addTo(map); 
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+<title>Kite Spots Map</title>
+<link rel="stylesheet" href="css/leaflet.css">
+<link rel="stylesheet" href="css/L.Control.Locate.min.css">
+<link rel="stylesheet" href="css/qgis2web.css">
+<link rel="stylesheet" href="css/fontawesome-all.min.css">
+<link rel="stylesheet" href="css/leaflet.photon.css">
+<style>
+  html, body, #map {width:100%;height:100%;margin:0;padding:0;}
+  .label-state{color:#323232;font-size:10pt;font-family:'Open Sans',sans-serif;text-shadow:0 0 2px rgba(255,255,255,.85);pointer-events:none}
+  .leaflet-interactive{cursor:pointer}
+  /* State toggle panel */
+  .leaflet-control-layers-overlays label{margin:2px 0}
+  .state-swatch{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #232323;margin:0 6px 0 2px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="js/L.Control.Locate.min.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="js/leaflet.photon.js"></script>
+<!-- Spot data: one combined layer exported from QGIS (qgis2web), split by the "state" field below -->
+<script src="data/spotsspota_all_1.js"></script>
+<script>
+// --- Map init ---
+var map = L.map('map',{zoomControl:false,minZoom:3,maxZoom:13});
+new L.Hash(map);
+L.control.zoom({position:'topleft'}).addTo(map);
+L.control.locate({locateOptions:{maxZoom:10}}).addTo(map);
 
-// Give the map an initial, valid view 
-var AU_BOUNDS = L.latLngBounds([[-44,112],[-10,154]]); 
-map.fitBounds(AU_BOUNDS); 
-map.setMaxBounds(AU_BOUNDS.pad(0.15)); 
+// Give the map an initial, valid view
+var AU_BOUNDS = L.latLngBounds([[-44,112],[-10,154]]);
+map.fitBounds(AU_BOUNDS);
+map.setMaxBounds(AU_BOUNDS.pad(0.15));
 
-// Basemap 
-var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-  maxZoom: 19, 
-  attribution: '&copy; OpenStreetMap contributors' 
-}).addTo(map); 
+// Basemap
+var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-var autolinker = new Autolinker({truncate:{length:36,location:'smart'}}); 
-var isTouch = window.matchMedia('(pointer: coarse)').matches; 
+var autolinker = new Autolinker({truncate:{length:36,location:'smart'}});
+var isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+// --- States: order in the toggle panel + colours (colours match the QGIS styling) ---
+var STATES = [
+  {name:'Western Australia',  short:'WA',  color:'rgba(255,199,44,1.0)'},
+  {name:'Northern Territory', short:'NT',  color:'rgba(183,65,14,1.0)'},
+  {name:'Queensland',         short:'QLD', color:'rgba(128,0,32,1.0)'},
+  {name:'New South Wales',    short:'NSW', color:'rgba(14,165,233,1.0)'},
+  {name:'Victoria',           short:'VIC', color:'rgba(0,31,126,1.0)'},
+  {name:'Tasmania',           short:'TAS', color:'rgba(11,102,35,1.0)'},
+  {name:'South Australia',    short:'SA',  color:'rgba(204,0,0,1.0)'}
+];
+var FALLBACK_COLOR = 'rgba(128,128,128,1.0)'; // any spot whose state isn't listed above
 
 // (You can keep this override, but the hitbox below handles taps)
 const CLICK_PAD = 25;
@@ -62,19 +75,21 @@ L.CircleMarker.include({
 });
 
 // --- Hover behaviour WITH growth ---
-function grow(layer){ 
+function grow(layer){
   layer.setStyle({radius: 7, weight: 2}); // grows visually on hover
-} 
-function shrink(layer,color){ 
+  layer.bringToFront();                   // keep the hovered dot above its neighbours
+}
+function shrink(layer,color){
   layer.setStyle({
     radius: 4, weight: 1, color:'rgba(35,35,35,1.0)',
     fillColor: color, fillOpacity: 1, opacity: 1
-  }); 
-} 
+  });
+}
 
 // --- Base style (default radius 4) ---
 function style(color){
   return {
+    pane: 'pane_spots',
     radius: 4, // normal size
     opacity: 1,
     color:'rgba(35,35,35,1.0)',
@@ -85,6 +100,14 @@ function style(color){
     interactive: true
   };
 }
+
+// --- Panes: invisible hitboxes sit UNDER the visible dots, so with spots close
+// together the dot you're actually pointing at always wins; the hitbox only
+// catches near-misses around it.
+map.createPane('pane_hitboxes');
+map.getPane('pane_hitboxes').style.zIndex = 400;
+map.createPane('pane_spots');
+map.getPane('pane_spots').style.zIndex = 401;
 
 // ==== Invisible hitbox helpers (bigger tap/click area) ====
 const HIT_RADIUS = 20; // <— tweak this to make tapping easier/harder
@@ -102,6 +125,7 @@ function visibleChild(layer){
 function markerWithHitbox(latlng, color){
   const visible = L.circleMarker(latlng, Object.assign({}, style(color), {_isVisible:true}));
   const hitbox  = L.circleMarker(latlng, {
+    pane: 'pane_hitboxes',
     radius: HIT_RADIUS,
     stroke: false,
     fill: true,
@@ -117,86 +141,98 @@ function markerWithHitbox(latlng, color){
   // Keep them together
   return L.featureGroup([hitbox, visible]);
 }
-// ==== /hitbox helpers ==== 
+// ==== /hitbox helpers ====
 
-function normalizeLink(raw){ 
-  if(!raw) return ''; 
-  var href = String(raw).trim(); 
-  if(href.indexOf('<a') !== -1){ 
-    var div = document.createElement('div'); 
-    div.innerHTML = href; var a = div.querySelector('a'); 
-    if(a && a.getAttribute('href')) href = a.getAttribute('href'); 
-  } 
-  if(/^https?:\/\//i.test(href)) return href; 
-  if(href.slice(0,7).toLowerCase()==='file://') href = href.slice(7); 
-  href = href.split('\\').join('/'); 
-  var parts = href.split('/'); var file = parts.length?parts[parts.length-1]:''; 
-  if(!file) return ''; 
-  var slug = file.replace(/\.(html?|htm)$/i,''); 
-  return 'https://rapture.zone/' + slug; 
-} 
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 
-function bindLayer(feature, layer, color){ 
-  var p = feature && feature.properties ? feature.properties : {}; 
-  var href = normalizeLink(p.Link_HTML); var name = p.Name || ''; 
-  if(!isTouch){ 
-    if(name) layer.bindTooltip('<div class="label-state">'+name+'</div>',{direction:'top',offset:[0,-14],className:'label-state'}); 
-    layer.on('mouseover', function(){ layer.openTooltip(); grow(layer); }); 
-    layer.on('mouseout', function(){ layer.closeTooltip(); shrink(layer,color); }); 
-    layer.on('click', function(){ if(href) window.open(href,'_blank','noopener'); }); 
-  } else { 
-    var popupContent = '<div><a href="'+href+'" target="_blank" rel="noopener">'+(name||href)+'</a></div>'; 
-    layer.bindPopup(popupContent,{maxHeight:400}); 
-  } 
-} 
+function normalizeLink(raw){
+  if(!raw) return '';
+  var href = String(raw).trim();
+  if(href.indexOf('<a') !== -1){
+    var div = document.createElement('div');
+    div.innerHTML = href; var a = div.querySelector('a');
+    if(a && a.getAttribute('href')) href = a.getAttribute('href');
+  }
+  if(/^https?:\/\//i.test(href)) return href;
+  if(href.slice(0,7).toLowerCase()==='file://') href = href.slice(7);
+  href = href.split('\\').join('/');
+  var parts = href.split('/'); var file = parts.length?parts[parts.length-1]:'';
+  if(!file) return '';
+  var slug = file.replace(/\.(html?|htm)$/i,'');
+  return 'https://kitingspots.com/' + slug;
+}
 
-// --- Create panes --- 
-map.createPane('pane_SouthAustralia_1'); 
-map.getPane('pane_SouthAustralia_1').style.zIndex = 401; 
-map.getPane('pane_SouthAustralia_1').style['mix-blend-mode'] = 'normal'; 
+function bindLayer(feature, layer, color){
+  var p = feature && feature.properties ? feature.properties : {};
+  // New export uses "name"/"url"; old exports used "Name"/"Link_HTML" — accept either
+  var href = normalizeLink(p.url || p.Link || p.Link_HTML);
+  var name = String(p.name || p.Name || '').trim();
+  if(!isTouch){
+    if(name) layer.bindTooltip('<div class="label-state">'+escapeHtml(name)+'</div>',{direction:'top',offset:[0,-14],className:'label-state'});
+    layer.on('mouseover', function(){ layer.openTooltip(); grow(layer); });
+    layer.on('mouseout', function(){ layer.closeTooltip(); shrink(layer,color); });
+    layer.on('click', function(){ if(href) window.open(href,'_blank','noopener'); });
+  } else {
+    var popupContent = '<div><a href="'+escapeHtml(href)+'" target="_blank" rel="noopener">'+escapeHtml(name||href)+'</a></div>';
+    layer.bindPopup(popupContent,{maxHeight:400});
+  }
+}
 
-map.createPane('pane_Victoria_2'); 
-map.getPane('pane_Victoria_2').style.zIndex = 402; 
-map.getPane('pane_Victoria_2').style['mix-blend-mode'] = 'normal'; 
+// --- Layers: one per state, built from the combined QGIS export ---
+function stateOf(f){ return String((f.properties && f.properties.state) || '').trim(); }
+var KNOWN = STATES.map(function(s){ return s.name; });
 
-map.createPane('pane_WesternAustralia_3'); 
-map.getPane('pane_WesternAustralia_3').style.zIndex = 403; 
-map.getPane('pane_WesternAustralia_3').style['mix-blend-mode'] = 'normal'; 
+function makeStateLayer(filterFn, color){
+  return L.geoJson(json_spotsspota_all_1, {
+    filter: filterFn,
+    onEachFeature: function(f,l){ bindLayer(f, visibleChild(l), color); },
+    pointToLayer: function(f,ll){ return markerWithHitbox(ll, color); }
+  });
+}
 
-// --- Layers (use hitbox wrapper + pass visible child to bindLayer) --- 
-var layer_SouthAustralia_1 = L.geoJson(json_SouthAustralia_1,{ 
-  pane:'pane_SouthAustralia_1', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(228,166,182,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(228,166,182,1.0)'); } 
-}); 
-var layer_Victoria_2 = L.geoJson(json_Victoria_2,{ 
-  pane:'pane_Victoria_2', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(225,195,110,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(225,195,110,1.0)'); } 
-}); 
-var layer_WesternAustralia_3 = L.geoJson(json_WesternAustralia_3,{ 
-  pane:'pane_WesternAustralia_3', 
-  onEachFeature:function(f,l){ bindLayer(f, visibleChild(l), 'rgba(132,194,140,1.0)'); }, 
-  pointToLayer:function(f,ll){ return markerWithHitbox(ll, 'rgba(132,194,140,1.0)'); } 
-}); 
+var stateLayers = [];
+var overlays = {};
+STATES.forEach(function(s){
+  var layer = makeStateLayer(function(f){ return stateOf(f) === s.name; }, s.color);
+  if (layer.getLayers().length === 0) return; // skip states with no spots
+  layer.addTo(map);
+  stateLayers.push(layer);
+  overlays['<span class="state-swatch" style="background:'+s.color+'"></span>'+s.name] = layer;
+});
 
-map.addLayer(layer_SouthAustralia_1); 
-map.addLayer(layer_Victoria_2); 
-map.addLayer(layer_WesternAustralia_3); 
+// Catch-all so a spot with a new/misspelt state still appears on the map
+var otherLayer = makeStateLayer(function(f){ return KNOWN.indexOf(stateOf(f)) === -1; }, FALLBACK_COLOR);
+if (otherLayer.getLayers().length) {
+  otherLayer.addTo(map);
+  stateLayers.push(otherLayer);
+  overlays['<span class="state-swatch" style="background:'+FALLBACK_COLOR+'"></span>Other'] = otherLayer;
+}
 
-// Layer tree 
-var overlaysTree=[ 
-  {label:'South Australia', layer:layer_SouthAustralia_1}, 
-  {label:'Victoria', layer:layer_Victoria_2}, 
-  {label:'Western Australia', layer:layer_WesternAustralia_3}, 
-]; 
-new L.Control.Layers.Tree(null, overlaysTree, {collapsed:false}).addTo(map); 
+// State on/off panel (Leaflet's built-in layer control; open on desktop, tap-to-open on phones)
+var layersControl = L.control.layers(null, overlays, {collapsed: isTouch, position:'topright'}).addTo(map);
+// Desktop: make the » button collapse the panel (and the layers icon re-open it)
+if (!isTouch) {
+  var lcEl = layersControl.getContainer();
+  var lcToggle = lcEl.querySelector('.leaflet-control-layers-toggle');
+  var panelOpen = true;
+  L.DomEvent.on(lcToggle, 'click', function(e){
+    L.DomEvent.stop(e);
+    panelOpen = !panelOpen;
+    if (panelOpen) layersControl.expand(); else layersControl.collapse();
+    lcToggle.blur();
+  });
+}
 
-// Fit to data bounds if available 
-try{ 
-  var fg=L.featureGroup([layer_SouthAustralia_1,layer_Victoria_2,layer_WesternAustralia_3]); 
-  var b=fg.getBounds(); if(b && b.isValid()) map.fitBounds(b.pad(0.2)); 
-}catch(e){console.warn(e);} 
-</script> 
-</body> 
+// Fit to data bounds if available
+try{
+  var fg=L.featureGroup(stateLayers);
+  var b=fg.getBounds(); if(b && b.isValid() && !location.hash) map.fitBounds(b.pad(0.05));
+}catch(e){console.warn(e);}
+</script>
+</body>
 </html>
+
